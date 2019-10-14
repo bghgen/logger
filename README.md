@@ -1,2 +1,2 @@
 # logger
-Serinal port logger, with Qt5
+Serial port logger, with Qt5
