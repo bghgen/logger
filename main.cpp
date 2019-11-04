@@ -23,18 +23,16 @@ public:
     datafile(datafile), logfile(logfile), serport(serport)
   {
 
-    if (!datafile->open(QIODevice::WriteOnly) || !logfile->open(QIODevice::WriteOnly)){
-      const QString err = "Opening log file error";
-      std::cout << err.toStdString() << std::endl;
-      throw err.toStdString().c_str();
+    if (!serport->open(QIODevice::ReadOnly)) {
+      throw "Failed to open serial port";
     }
 
-    if (!serport->open(QIODevice::ReadOnly)) {
-      const QString err = "Failed to open port " + serport->portName();
+    if (!datafile->open(QIODevice::WriteOnly) || !logfile->open(QIODevice::WriteOnly)){
       close();
-      std::cout << err.toStdString() << std::endl;
-      throw err.toStdString().c_str();
+      throw "Opening log file error";
     }
+
+
   }
   void close(){
     std::cout << "close\n";
@@ -93,8 +91,8 @@ int main(int argc, char *argv[]){
 
   try {
   obj = Logger(&data_file, &text_file, &serialPort);
-  } catch (const char* str) {
-    std::cout << str << std::endl;
+  } catch (const char* const str) {
+    std::cout << "Error! " <<  str << std::endl;
     return -1;
   }
 
