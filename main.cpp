@@ -8,55 +8,23 @@
 #include <QFile>
 #include <signal.h>
 #include <functional>
+#include <QCoreApplication>
+#include "logger.h"
 
 
 void printPortsInfo();
-void printData(const QByteArray& data, QTextStream& out);
-class Logger{
-  QFile* datafile = nullptr;
-  QFile* logfile = nullptr;
-  QSerialPort* serport = nullptr;
 
-public:
-  Logger() = default;
-  Logger(QFile* datafile, QFile* logfile, QSerialPort* serport):
-    datafile(datafile), logfile(logfile), serport(serport)
-  {
-
-    if (!serport->open(QIODevice::ReadOnly)) {
-      throw "Failed to open serial port";
-    }
-
-    if (!datafile->open(QIODevice::WriteOnly) || !logfile->open(QIODevice::WriteOnly)){
-      close();
-      throw "Opening log file error";
-    }
-
-
-  }
-  void close(){
-    std::cout << "close\n";
-
-    if ( datafile != nullptr)
-      datafile->close();
-
-    if ( datafile != nullptr)
-      logfile->close();
-
-    if (datafile != nullptr)
-      serport->close();
-  }
-};
 
 Logger obj;
 
 void my_handler(int s){
   Q_UNUSED(s)
-  obj.close();
+  //obj.close();
   exit(1);
 }
 
 int main(int argc, char *argv[]){
+  QCoreApplication app(argc, argv);
   if (argc != 2) {
     std::cout << "Usage: " << argv[0] << " <serialportname>" << std::endl;
     return 1;
@@ -90,15 +58,13 @@ int main(int argc, char *argv[]){
   serialPort.setBaudRate(serialPortBaudRate);
 
   try {
-  obj = Logger(&data_file, &text_file, &serialPort);
+  obj.setFiles(&data_file, &text_file, &serialPort);
   } catch (const char* const str) {
     std::cout << "Error! " <<  str << std::endl;
     return -1;
   }
 
 
-  QTextStream data_out(&data_file);
-  QTextStream text_out(&text_file);
 
   /// обработка сигнала Ctrl + C
 
@@ -110,54 +76,41 @@ int main(int argc, char *argv[]){
   sigaction(SIGINT, &sigIntHandler, nullptr);
   ////
 
-  QByteArray readData = serialPort.readAll();
 
-  while (serialPort.waitForReadyRead(-1)){ // wait forever
-    readData.append(serialPort.readAll());
-    printData(readData, text_out);
-    data_out << readData;
-    readData.clear();
-  }
+  //obj.read();
+  QObject::connect(&serialPort, SIGNAL(readyRead()), &obj, SLOT(read()));
 
-  if (serialPort.error() == QSerialPort::ReadError) {
-    std::cout << "Failed to read from port " << serialPortName.toStdString() << ", error: " << serialPort.errorString().toStdString() << std::endl;
-    data_file.close();
-    text_file.close();
-    serialPort.close();
-    return 1;
-  } else if (serialPort.error() == QSerialPort::TimeoutError && readData.isEmpty()) {
-    std::cout << "No data was currently available for reading from port " << serialPortName.toStdString() << std::endl;
-    data_file.close();
-    text_file.close();
-    serialPort.close();
-    return 0;
-  }
+  //QByteArray readData = serialPort.readAll();
 
+//  while (serialPort.waitForReadyRead(-1)){ // wait forever
+//    readData.append(serialPort.readAll());
+//    printData(readData, text_out);
+//    data_out << readData;
+//    readData.clear();
+//  }
+
+
+//  if (serialPort.error() == QSerialPort::ReadError) {
+//    std::cout << "Failed to read from port " << serialPortName.toStdString() << ", error: " << serialPort.errorString().toStdString() << std::endl;
+//    data_file.close();
+//    text_file.close();
+//    serialPort.close();
+//    return 1;
+//  } else if (serialPort.error() == QSerialPort::TimeoutError && readData.isEmpty()) {
+//    std::cout << "No data was currently available for reading from port " << serialPortName.toStdString() << std::endl;
+//    data_file.close();
+//    text_file.close();
+//    serialPort.close();
+//    return 0;
+//  }
+  app.exec();
   return 0;
 }
 
 
 
 
-void printData(const QByteArray& data, QTextStream& out){
-  const QString time = QTime::currentTime().toString("hh:mm:ss.zzz");
-  QString text_str;
-  text_str = time + "\tRead\t" + QString::number(data.size()) +  "\tbyte(s):";
-  QString data_str = text_str;
-  QString chars{};
-  for (auto ch : data){
-    data_str+=' ' + QByteArray(1, ch).toHex();
-    if (std::isprint(ch)){
-      text_str += ch;
-      chars += ch;
-    }
-    else {
-      text_str += ".";
-    }
-  }
-  std::cout << data_str.toStdString() << "\n" << text_str.toStdString() << "\n";
-  out << data_str << '\t' << chars << '\n';
-}
+
 
 void printPortsInfo(){
   QTextStream out(stdout);
