@@ -54,27 +54,16 @@ void Logger::close(){
 
 
 void Logger::read(){
-    std::cout << "try to read";
-    QByteArray readData = serport->readAll();
     QTextStream data_out(datafile);
     QTextStream text_out(logfile);
-
-    while (true){
-      char buf[500];
-      int rez = serport->read(buf, 500);
-      if (rez > 0){
-        readData.append(buf, rez);
-        continue;
-      }
-      else{
-        if (readData.size() > 0){
-          printData(readData, text_out);
-          data_out << readData;
-          readData.clear();
+    QByteArray reception_buffer;
+    reception_buffer = serport->readAll();
+        while (serport->waitForReadyRead(10)) {
+            reception_buffer.append(serport->readAll());
         }
-        break;
-      }
-    }
+    printData(reception_buffer, text_out);
+    data_out << reception_buffer;
+    reception_buffer.clear();  
 }
 
 
